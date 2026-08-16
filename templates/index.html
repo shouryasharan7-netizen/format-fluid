@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Format Fluid — Turn One Video Into Everything</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0a0f;
+            --surface: #12121a;
+            --surface-2: #1a1a25;
+            --border: #2a2a3a;
+            --text: #e8e8f0;
+            --text-dim: #8a8a9a;
+            --accent: #ff6b35;
+            --accent-2: #f7c548;
+            --success: #4ade80;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            color: var(--text-dim);
+            font-size: 1.15rem;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 20px;
+            padding: 80px 40px;
+            text-align: center;
+            background: var(--surface);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--accent);
+            background: var(--surface-2);
+        }
+
+        .upload-zone input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+
+        .upload-zone h3 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .upload-zone p {
+            color: var(--text-dim);
+        }
+
+        .processing {
+            display: none;
+            text-align: center;
+            padding: 60px;
+        }
+
+        .processing.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .processing h3 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .processing p {
+            color: var(--text-dim);
+        }
+
+        .results {
+            display: none;
+            margin-top: 48px;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .results-header h2 {
+            font-size: 1.75rem;
+        }
+
+        .badge {
+            background: var(--surface-2);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+        }
+
+        .clips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .clip-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .clip-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+        }
+
+        .clip-video {
+            width: 100%;
+            aspect-ratio: 9/16;
+            background: #000;
+            display: block;
+        }
+
+        .clip-info {
+            padding: 20px;
+        }
+
+        .clip-meta {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .clip-meta span {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            background: var(--surface-2);
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        .clip-score {
+            color: var(--accent) !important;
+            font-weight: 600;
+        }
+
+        .clip-text {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            margin-bottom: 16px;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .platform-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .platform-tab {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-dim);
+            transition: all 0.2s;
+        }
+
+        .platform-tab.active {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+
+        .platform-copy {
+            background: var(--surface-2);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--text);
+            margin-bottom: 16px;
+            white-space: pre-wrap;
+            min-height: 60px;
+        }
+
+        .clip-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #e55a2b;
+        }
+
+        .btn-secondary {
+            background: var(--surface-2);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--success);
+            color: #000;
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 48px;
+        }
+
+        .feature {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 24px;
+            border-radius: 12px;
+        }
+
+        .feature h4 {
+            color: var(--accent);
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+
+        .feature p {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 640px) {
+            header h1 {
+                font-size: 2rem;
+            }
+
+            .upload-zone {
+                padding: 40px 20px;
+            }
+
+            .clips-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Format Fluid</h1>
+            <p>Drop a long-form video. Get vertical clips, captions & platform copy — automatically.</p>
+        </header>
+        <div class="upload-zone" id="uploadZone">
+            <input type="file" id="fileInput" accept="video/*">
+            <div class="upload-icon">📹</div>
+            <h3>Drop your video here</h3>
+            <p>MP4, MOV, MKV up to 500MB</p>
+        </div>
+        <div class="processing" id="processing">
+            <div class="spinner"></div>
+            <h3>Processing your video...</h3>
+            <p>This takes 30-90 seconds depending on length</p>
+        </div>
+        <div class="results" id="results">
+            <div class="results-header">
+                <h2>Your Clips</h2>
+                <span class="badge" id="clipCount">0 clips</span>
+            </div>
+            <div class="clips-grid" id="clipsGrid"></div>
+        </div>
+        <div class="features">
+            <div class="feature">
+                <h4>🎯 Smart Detection</h4>
+                <p>Finds high-energy moments, face close-ups, and dense speech automatically.</p>
+            </div>
+            <div class="feature">
+                <h4>📐 Auto-Reframe</h4>
+                <p>Intelligently crops to 9:16 vertical, centering on faces for maximum engagement.</p>
+            </div>
+            <div class="feature">
+                <h4>✍️ Auto-Captions</h4>
+                <p>Word-level synced captions burned directly into every clip.</p>
+            </div>
+            <div class="feature">
+                <h4>📱 Platform Copy</h4>
+                <p>Generates native captions for TikTok, Shorts, Reels, Twitter & LinkedIn.</p>
+            </div>
+        </div>
+    </div>
+    <div class="toast" id="toast">Copied to clipboard!</div>
+    <script>
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const processing = document.getElementById('processing');
+        const results = document.getElementById('results');
+        const clipsGrid = document.getElementById('clipsGrid');
+        const clipCount = document.getElementById('clipCount');
+        const toast = document.getElementById('toast');
+        let currentData = null;
+
+        uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+        uploadZone.addEventListener('drop', (e) => { e.preventDefault(); uploadZone.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('video/')) { alert('Please upload a video file'); return; }
+            uploadZone.style.display = 'none';
+            processing.classList.add('active');
+            const formData = new FormData();
+            formData.append('video', file);
+            fetch('/upload', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => { if (data.error) throw new Error(data.error); currentData = data; showResults(data); })
+                .catch(err => { processing.querySelector('h3').textContent = 'Something went wrong'; processing.querySelector('p').textContent = err.message; });
+        }
+
+        function showResults(data) {
+            processing.classList.remove('active');
+            results.classList.add('active');
+            clipCount.textContent = `${data.clips.length} clip${data.clips.length !== 1 ? 's' : ''}`;
+            clipsGrid.innerHTML = data.clips.map((clip, i) => `
+                <div class="clip-card">
+                    <video class="clip-video" controls><source src="/clips/${data.job_id}/${clip.filename}" type="video/mp4"></video>
+                    <div class="clip-info">
+                        <div class="clip-meta">
+                            <span class="clip-score">⭐ Score: ${clip.score}</span>
+                            <span>⏱ ${clip.duration}s</span>
+                            <span>📍 ${clip.start}s-${clip.end}s</span>
+                        </div>
+                        <div class="clip-text">${clip.text_preview}</div>
+                        <div class="platform-tabs" data-clip="${i}">
+                            <button class="platform-tab active" data-platform="tiktok">TikTok</button>
+                            <button class="platform-tab" data-platform="youtube_shorts">Shorts</button>
+                            <button class="platform-tab" data-platform="instagram_reels">Reels</button>
+                            <button class="platform-tab" data-platform="twitter">X/Twitter</button>
+                            <button class="platform-tab" data-platform="linkedin">LinkedIn</button>
+                        </div>
+                        <div class="platform-copy" id="copy-${i}">${clip.platform_copy.tiktok.replace(/\\n/g, '<br>')}</div>
+                        <div class="clip-actions">
+                            <a href="/download/${data.job_id}/${clip.filename}" class="btn btn-primary" download>⬇ Download</a>
+                            <button class="btn btn-secondary" onclick="copyText(${i})">📋 Copy Text</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            document.querySelectorAll('.platform-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const clipIdx = tab.closest('.platform-tabs').dataset.clip;
+                    const platform = tab.dataset.platform;
+                    tab.closest('.platform-tabs').querySelectorAll('.platform-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.getElementById(`copy-${clipIdx}`).innerHTML = currentData.clips[clipIdx].platform_copy[platform].replace(/\\n/g, '<br>');
+                });
+            });
+        }
+
+        function copyText(clipIdx) {
+            const platform = document.querySelector(`.platform-tabs[data-clip="${clipIdx}"] .platform-tab.active`).dataset.platform;
+            const text = currentData.clips[clipIdx].platform_copy[platform];
+            navigator.clipboard.writeText(text).then(() => { toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2000); });
+        }
+    </script>
+</body>
+
+</html>
