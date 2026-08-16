@@ -634,10 +634,16 @@
         </div>
 
         <div class="results" id="results">
-            <div class="results-header">
-                <h2>Your Curated Clips</h2>
-                <span class="badge" id="clipCount">0 clips generated</span>
+            <div class="results-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                <div>
+                    <h2>Your Viral Clips Are Ready</h2>
+                    <p id="clipCount">3 clips generated</p>
+                </div>
+                <button class="btn btn-secondary" onclick="window.location.reload()">
+                    <i data-lucide="refresh-cw"></i> Process Another Video
+                </button>
             </div>
+            
             <div class="clips-grid" id="clipsGrid"></div>
         </div>
 
