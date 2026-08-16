@@ -18,8 +18,8 @@ def get_whisper_model():
     global _whisper_model
     if _whisper_model is None:
         import whisper
-        print("[FormatFluid] Loading Whisper model (base)...")
-        _whisper_model = whisper.load_model("base")
+        print("[FormatFluid] Loading Whisper model (tiny)...")
+        _whisper_model = whisper.load_model("tiny")
         print("[FormatFluid] Whisper loaded.")
     return _whisper_model
 
@@ -292,7 +292,7 @@ def extract_vertical_clip(
         "-t", str(duration),
         "-i", video_path,
         "-vf", f"crop={crop_width}:{crop_height}:{crop_x}:{crop_y},scale={target_width}:{target_height}",
-        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
         "-c:a", "aac", "-b:a", "128k",
         "-movflags", "+faststart",
         output_path
@@ -351,7 +351,7 @@ def burn_captions(video_path: str, output_path: str, words: List[dict]) -> str:
     cmd = [
         "ffmpeg", "-y", "-i", video_path,
         "-vf", vf,
-        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
         "-c:a", "copy",
         "-movflags", "+faststart",
         output_path
@@ -390,7 +390,7 @@ def process_video(video_path: str, job_id: str) -> dict:
     clip_duration = min(20.0, info["duration"] / 3)
     clips = find_viral_moments(
         info["duration"], transcript, audio_energy, face_scores,
-        num_clips=5, clip_duration=clip_duration
+        num_clips=3, clip_duration=clip_duration
     )
     print(f"[{job_id}] Found {len(clips)} clips")
     results = []
