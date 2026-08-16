@@ -137,7 +137,7 @@ def extract_audio(video_path: str, output_wav: str) -> str:
     return output_wav
 
 
-def analyze_audio_energy(audio_path: str, duration: float, num_segments: int = 100) -> np.ndarray:
+def analyze_audio_energy(audio_path: str, duration: float, num_segments: int = 50) -> np.ndarray:
     energies = np.zeros(num_segments)
     if not os.path.exists(audio_path) or os.path.getsize(audio_path) < 100:
         return energies
@@ -159,7 +159,7 @@ def analyze_audio_energy(audio_path: str, duration: float, num_segments: int = 1
     return energies
 
 
-def detect_face_presence(video_path: str, duration: float, num_samples: int = 100) -> np.ndarray:
+def detect_face_presence(video_path: str, duration: float, num_samples: int = 50) -> np.ndarray:
     if not _cv2_available:
         return np.zeros(num_samples)
     import cv2

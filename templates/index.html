@@ -181,6 +181,60 @@
             border-color: var(--color-primary);
         }
 
+        /* Demo Button */
+        .demo-btn {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 8px 24px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            z-index: 10;
+        }
+        .demo-btn:hover { background: rgba(255,255,255,0.2); transform: scale(1.05); }
+
+        /* How it works */
+        .how-it-works {
+            margin-top: 80px;
+            text-align: center;
+        }
+        .how-it-works h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 40px;
+            background: linear-gradient(90deg, #fff, #9ca3af);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+            text-align: left;
+        }
+        .step-card {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--color-border);
+            border-radius: 16px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .step-num {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: rgba(255,255,255,0.05);
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            line-height: 1;
+        }
+        .step-card h4 { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; color: var(--color-primary); }
+        .step-card p { font-size: 0.9rem; color: var(--color-muted-foreground); line-height: 1.5; }
+
         /* Progress Terminal */
         .processing { display: none; padding: 40px 20px; max-width: 800px; margin: 0 auto; }
         .processing.active { display: block; animation: fadeUp 0.5s var(--ease-out) forwards; }
@@ -493,6 +547,9 @@
             </div>
             <h3>Drop your video here</h3>
             <p>MP4, MOV, MKV up to 500MB</p>
+            <div style="margin-top: 16px;">
+                <button class="demo-btn" onclick="runDemoMode(); event.stopPropagation(); event.preventDefault();">Or Try Demo Mode</button>
+            </div>
         </div>
         
         <div class="style-selector-container">
@@ -502,6 +559,37 @@
                 <option value="mrbeast">MrBeast Dynamic (Bold Yellow + Outline)</option>
                 <option value="neon">Neon Cyberpunk (Cyan + Magenta Glow)</option>
             </select>
+        </div>
+        
+        <div class="how-it-works">
+            <h2>How It Works</h2>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-num">01</div>
+                    <h4>Transcribe</h4>
+                    <p>OpenAI Whisper pulls word-level timestamps.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">02</div>
+                    <h4>Score</h4>
+                    <p>AI detects 40% audio energy, 30% face presence, and 30% word density.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">03</div>
+                    <h4>Reframe</h4>
+                    <p>FFmpeg + OpenCV auto-crops 9:16 centered on faces.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">04</div>
+                    <h4>Caption</h4>
+                    <p>FFmpeg drawtext burns 3-second chunked captions.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">05</div>
+                    <h4>Copy</h4>
+                    <p>Rule-based gen creates native hooks per platform.</p>
+                </div>
+            </div>
         </div>
 
         <div class="processing" id="processing">
@@ -617,6 +705,9 @@
             const styleContainer = document.querySelector('.style-selector-container');
             if (styleContainer) styleContainer.style.display = 'none';
             
+            const howItWorks = document.querySelector('.how-it-works');
+            if (howItWorks) howItWorks.style.display = 'none';
+            
             document.getElementById('progressFill').style.width = '0%';
             document.getElementById('statusLog').textContent = '> Uploading to server...';
             document.querySelectorAll('.check-item').forEach(el => el.className = 'check-item pending');
@@ -651,6 +742,70 @@
                 .catch(err => { 
                     showError(err.message);
                 });
+        }
+        
+        function runDemoMode() {
+            uploadZone.style.display = 'none';
+            document.querySelector('.features').style.display = 'none';
+            
+            const styleContainer = document.querySelector('.style-selector-container');
+            if (styleContainer) styleContainer.style.display = 'none';
+            
+            const howItWorks = document.querySelector('.how-it-works');
+            if (howItWorks) howItWorks.style.display = 'none';
+            
+            document.querySelectorAll('.check-item').forEach(el => el.className = 'check-item pending');
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('statusLog').textContent = '> Starting Demo Engine...';
+            
+            processing.classList.add('active');
+            
+            let demoStages = [
+                { stage: 1, text: "Validating and decoding demo video...", delay: 800 },
+                { stage: 2, text: "Running AI smart-detection for speaker focus...", delay: 1500 },
+                { stage: 3, text: "Auto-reframing to 9:16 vertical crop...", delay: 1200 },
+                { stage: 4, text: "Transcribing speech and burning word-level synced captions...", delay: 1200 },
+                { stage: 5, text: "Generating platform-specific copy...", delay: 800 }
+            ];
+            
+            let currentIdx = 0;
+            
+            function advanceStage() {
+                if (currentIdx >= demoStages.length) {
+                    const demoResult = {
+                        original: { duration: 60, width: 1920, height: 1080 },
+                        clips: [
+                            {
+                                clip_index: 0, start: 10.5, end: 25.5, duration: 15.0, score: 0.95,
+                                filename: "",
+                                text_preview: "This is a pre-generated demo clip simulating what Format Fluid's pipeline looks like in action!",
+                                platform_copy: {
+                                    tiktok: "Wait until the end... 🤯 \n\n#viral #fyp #demo",
+                                    youtube_shorts: "This will blow your mind 🤯 \n\n#shorts #viral",
+                                    instagram_reels: "Unbelievable. \n.\n.\n#reels #demo #contentcreator",
+                                    twitter: "This tool is insane. What do you think? \n\n#buildinpublic #creator",
+                                    linkedin: "Insight: Automation is the key to scaling content. \n\nWhat's your take? \n\n#contentstrategy #creator"
+                                }
+                            }
+                        ]
+                    };
+                    updateChecklist(5, 100, "Done!");
+                    setTimeout(() => {
+                        processing.classList.remove('active');
+                        currentData = demoResult;
+                        showResults(demoResult);
+                    }, 500);
+                    return;
+                }
+                
+                let s = demoStages[currentIdx];
+                updateChecklist(s.stage, (currentIdx / demoStages.length) * 100 + 10, s.text);
+                
+                currentIdx++;
+                setTimeout(advanceStage, s.delay);
+            }
+            
+            advanceStage();
         }
         
         function startPolling(jobId) {
