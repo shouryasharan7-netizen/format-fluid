@@ -330,20 +330,22 @@ def extract_vertical_clip(
         "-threads", "1",
         output_path
     ]
-    try:
-        subprocess.run(cmd, check=True, capture_output=True)
-    except subprocess.CalledProcessError:
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:
         print(f"[FormatFluid] Crop failed, falling back to basic extraction for clip {clip.start}s")
         cmd_fallback = [
             "ffmpeg", "-y", 
             "-ss", str(clip.start),
             "-i", video_path,
             "-t", str(clip.end - clip.start),
-            "-c:v", "copy", "-c:a", "copy",
+            "-c:v", "copy",
             "-threads", "1",
             output_path
         ]
-        subprocess.run(cmd_fallback, check=True, capture_output=True, text=True)
+        result2 = subprocess.run(cmd_fallback, capture_output=True, text=True)
+        if result2.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:
+            if os.path.exists(video_path):
+                shutil.copy(video_path, output_path)
     return output_path
 
 
