@@ -93,35 +93,36 @@ class Clip:
 
 def get_video_info(video_path: str) -> dict:
     cmd = [
-        "ffprobe", "-v", "error", "-select_streams", "v:0",
-        "-show_entries", "stream=width,height,duration,r_frame_rate",
+        "ffprobe", "-v", "error", 
+        "-show_entries", "format=duration:stream=width,height,duration,r_frame_rate,codec_type",
         "-of", "json", video_path
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
-    data = json.loads(result.stdout)
-    streams = data.get("streams", [])
-    if not streams:
-        cmd2 = [
-            "ffprobe", "-v", "error",
-            "-show_entries", "stream=width,height,duration,r_frame_rate",
-            "-of", "json", video_path
-        ]
-        result2 = subprocess.run(cmd2, capture_output=True, text=True)
-        data2 = json.loads(result2.stdout)
-        streams = data2.get("streams", [])
+    try:
+        data = json.loads(result.stdout)
+    except Exception:
+        raise ValueError("Failed to parse ffprobe output")
+        
+    streams = [s for s in data.get("streams", []) if s.get("codec_type") == "video"]
     if not streams:
         raise ValueError(f"No video stream found in {video_path}")
+    
     info = streams[0]
+    duration_str = info.get("duration")
+    if duration_str is None:
+        duration_str = data.get("format", {}).get("duration", "0")
+        
     fps_str = info.get("r_frame_rate", "30/1")
     try:
         num, den = map(int, fps_str.split("/"))
         fps = num / den if den != 0 else 30
     except Exception:
         fps = 30
+        
     return {
         "width": int(info.get("width", 1920)),
         "height": int(info.get("height", 1080)),
-        "duration": float(info.get("duration", 0)),
+        "duration": float(duration_str) if duration_str else 0.0,
         "fps": fps
     }
 

@@ -773,11 +773,13 @@
             function advanceStage() {
                 if (currentIdx >= demoStages.length) {
                     const demoResult = {
+                        is_demo: true,
+                        job_id: "demo_123",
                         original: { duration: 60, width: 1920, height: 1080 },
                         clips: [
                             {
                                 clip_index: 0, start: 10.5, end: 25.5, duration: 15.0, score: 0.95,
-                                filename: "",
+                                filename: "demo.mp4",
                                 text_preview: "This is a pre-generated demo clip simulating what Format Fluid's pipeline looks like in action!",
                                 platform_copy: {
                                     tiktok: "Wait until the end... 🤯 \n\n#viral #fyp #demo",
@@ -859,12 +861,27 @@
         }
         
         function showError(msg) {
+            uploadZone.style.display = 'block';
+            document.querySelector('.features').style.display = 'grid';
+            const styleContainer = document.querySelector('.style-selector-container');
+            if (styleContainer) styleContainer.style.display = 'flex';
+            const howItWorks = document.querySelector('.how-it-works');
+            if (howItWorks) howItWorks.style.display = 'block';
+            
             results.classList.remove('active');
-            processing.classList.add('active');
-            processing.innerHTML = `
-                <h3 class="processing-title text-red">Something went wrong</h3>
-                <p class="status-log text-red" style="border-left-color: #EF4444;">> Error: ${msg}</p>
-            `;
+            processing.classList.remove('active');
+            
+            const toast = document.getElementById('toast');
+            toast.textContent = `Error: ${msg}`;
+            toast.style.background = '#EF4444';
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.style.background = 'var(--color-primary)';
+                    toast.textContent = 'Copied to clipboard!';
+                }, 300);
+            }, 5000);
         }
 
         function showResults(data) {
@@ -874,7 +891,9 @@
             
             clipsGrid.innerHTML = data.clips.map((clip, i) => `
                 <div class="clip-card">
-                    <video class="clip-video" controls><source src="/clips/${data.job_id}/${clip.filename}" type="video/mp4"></video>
+                    <video class="clip-video" controls ${data.is_demo ? 'loop muted autoplay' : ''}>
+                        <source src="${data.is_demo ? 'https://www.w3schools.com/html/mov_bbb.mp4' : `/download/${data.job_id}/${clip.filename}`}" type="video/mp4">
+                    </video>
                     <div class="clip-info">
                         <div class="clip-meta">
                             <span class="clip-score"><i data-lucide="star"></i> ${clip.score}</span>
