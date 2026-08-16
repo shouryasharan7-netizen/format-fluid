@@ -326,13 +326,23 @@ def extract_vertical_clip(
         "-t", str(clip.end - clip.start),
         "-vf", f"crop={crop_w}:{crop_h}:{crop_x}:{crop_y},scale={target_width}:{target_height}",
         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
+    cmd = [
+        "ffmpeg", "-y", "-nostdin", 
+        "-ss", str(clip.start),
+        "-i", video_path,
+        "-t", str(clip.end - clip.start),
+        "-vf", f"crop={crop_w}:{crop_h}:{crop_x}:{crop_y},scale={target_width}:{target_height}",
+        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
         "-c:a", "copy",
         "-threads", "1",
         output_path
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:
-        print(f"[FormatFluid] Crop failed, falling back to basic extraction for clip {clip.start}s")
+    try:
+        result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+        if result.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:
+            raise ValueError("Crop failed")
+    except Exception as e:
+        print(f"[FormatFluid] Crop failed ({e}), falling back to basic extraction for clip {clip.start}s")
         cmd_fallback = [
             "ffmpeg", "-y", "-nostdin", 
             "-ss", str(clip.start),
@@ -342,8 +352,11 @@ def extract_vertical_clip(
             "-threads", "1",
             output_path
         ]
-        result2 = subprocess.run(cmd_fallback, capture_output=True, text=True)
-        if result2.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:
+        try:
+            result2 = subprocess.run(cmd_fallback, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+            if result2.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:
+                raise ValueError("Fallback crop failed")
+        except Exception:
             if os.path.exists(video_path):
                 shutil.copy(video_path, output_path)
     return output_path
@@ -407,11 +420,14 @@ def burn_captions(video_path: str, output_path: str, words: List[dict], caption_
         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
         "-c:a", "copy",
         "-threads", "1",
-        "-movflags", "+faststart",
         output_path
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:
+    try:
+        result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+        if result.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:
+            raise ValueError("Caption burn failed")
+    except Exception as e:
+        print(f"[FormatFluid] Caption burn failed ({e}), falling back to uncaptioned clip")
         if os.path.exists(video_path):
             shutil.copy(video_path, output_path)
     return output_path
