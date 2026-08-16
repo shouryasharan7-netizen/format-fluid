@@ -326,13 +326,6 @@ def extract_vertical_clip(
         "-t", str(clip.end - clip.start),
         "-vf", f"crop={crop_w}:{crop_h}:{crop_x}:{crop_y},scale={target_width}:{target_height}",
         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
-    cmd = [
-        "ffmpeg", "-y", "-nostdin", 
-        "-ss", str(clip.start),
-        "-i", video_path,
-        "-t", str(clip.end - clip.start),
-        "-vf", f"crop={crop_w}:{crop_h}:{crop_x}:{crop_y},scale={target_width}:{target_height}",
-        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
         "-c:a", "copy",
         "-threads", "1",
         output_path
