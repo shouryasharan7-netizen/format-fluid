@@ -165,24 +165,36 @@ def detect_face_presence(video_path: str, duration: float, num_samples: int = 50
         return np.zeros(num_samples)
     import cv2
     cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
     face_cascade = cv2.CascadeClassifier(cascade_path)
     scores = np.zeros(num_samples)
-    sample_interval = total_frames / num_samples if total_frames > 0 else 1
-    for i in range(num_samples):
-        frame_idx = int(i * sample_interval)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-        ret, frame = cap.read()
+    
+    if total_frames <= 0:
+        return scores
+        
+    sample_interval = max(1, total_frames // num_samples)
+    for i in range(total_frames):
+        ret = cap.grab()
         if not ret:
-            continue
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-        if len(faces) > 0:
-            frame_area = frame.shape[0] * frame.shape[1]
-            max_face_area = max([w * h for (x, y, w, h) in faces])
-            scores[i] = max_face_area / frame_area
+            break
+        if i % sample_interval == 0:
+            idx = i // sample_interval
+            if idx >= num_samples:
+                break
+            ret, frame = cap.retrieve()
+            if ret:
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                # Resize for drastically faster face detection
+                h, w = gray.shape
+                new_w = 480
+                new_h = int(h * (new_w / w))
+                gray_small = cv2.resize(gray, (new_w, new_h))
+                faces = face_cascade.detectMultiScale(gray_small, 1.1, 4)
+                if len(faces) > 0:
+                    frame_area = new_w * new_h
+                    max_face_area = max([fw * fh for (fx, fy, fw, fh) in faces])
+                    scores[idx] = max_face_area / frame_area
     cap.release()
     return scores
 
@@ -191,28 +203,40 @@ def get_face_center(video_path: str, start_time: float, end_time: float) -> Tupl
     if not _cv2_available:
         return None, None
     import cv2
-    cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    start_frame = int(start_time * fps)
-    end_frame = int(end_time * fps)
+    import tempfile
+    
     cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
     face_cascade = cv2.CascadeClassifier(cascade_path)
     centers_x = []
     centers_y = []
-    step = max(1, (end_frame - start_frame) // 10)
-    for frame_idx in range(start_frame, end_frame, step):
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-        ret, frame = cap.read()
-        if not ret:
-            continue
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-        if len(faces) > 0:
-            largest = max(faces, key=lambda f: f[2] * f[3])
-            x, y, w, h = largest
-            centers_x.append(x + w / 2)
-            centers_y.append(y + h / 2)
-    cap.release()
+    
+    duration = end_time - start_time
+    times_to_check = [start_time + duration * 0.25, start_time + duration * 0.5, start_time + duration * 0.75]
+    
+    for t in times_to_check:
+        tmp_path = f"{video_path}_tmp_{t}.jpg"
+        cmd = [
+            "ffmpeg", "-y", "-ss", str(t), "-i", video_path, 
+            "-vframes", "1", "-q:v", "2", tmp_path
+        ]
+        try:
+            subprocess.run(cmd, check=True, capture_output=True)
+            if os.path.exists(tmp_path):
+                img = cv2.imread(tmp_path)
+                if img is not None:
+                    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                    faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+                    if len(faces) > 0:
+                        largest = max(faces, key=lambda f: f[2] * f[3])
+                        x, y, w, h = largest
+                        centers_x.append(x + w / 2)
+                        centers_y.append(y + h / 2)
+                os.remove(tmp_path)
+        except Exception:
+            if os.path.exists(tmp_path):
+                try: os.remove(tmp_path)
+                except: pass
+                
     if centers_x:
         return np.median(centers_x), np.median(centers_y)
     return None, None
