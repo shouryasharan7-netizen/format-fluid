@@ -131,28 +131,26 @@ def transcribe_audio(audio_path: str) -> dict:
     return result
 
 
-def analyze_audio_energy(video_path: str, duration: float, num_segments: int = 100) -> np.ndarray:
-    segment_duration = duration / num_segments
-    energies = []
-    for i in range(num_segments):
-        start = i * segment_duration
-        cmd = [
-            "ffmpeg", "-y", "-i", video_path,
-            "-ss", str(start), "-t", str(segment_duration),
-            "-af", "ebur128=peak=true",
-            "-f", "null", "-"
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        output = result.stderr
-        loudness = -70.0
-        for line in output.split("\n"):
-            if "Integrated loudness:" in line and "I:" in line:
-                try:
-                    loudness = float(line.split("I:")[1].split("LUFS")[0].strip())
-                except Exception:
-                    pass
-        energies.append(loudness)
-    return np.array(energies)
+def analyze_audio_energy(audio_path: str, duration: float, num_segments: int = 100) -> np.ndarray:
+    energies = np.zeros(num_segments)
+    if not os.path.exists(audio_path) or os.path.getsize(audio_path) < 100:
+        return energies
+    try:
+        import wave
+        with wave.open(audio_path, 'rb') as wf:
+            n_frames = wf.getnframes()
+            audio_data = wf.readframes(n_frames)
+            samples = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32)
+            samples_per_seg = max(1, len(samples) // num_segments)
+            for i in range(num_segments):
+                start_idx = i * samples_per_seg
+                end_idx = start_idx + samples_per_seg if i < num_segments - 1 else len(samples)
+                seg_samples = samples[start_idx:end_idx]
+                if len(seg_samples) > 0:
+                    energies[i] = np.sqrt(np.mean(np.square(seg_samples)))
+    except Exception as e:
+        print(f"Error analyzing audio energy: {e}")
+    return energies
 
 
 def detect_face_presence(video_path: str, duration: float, num_samples: int = 100) -> np.ndarray:
@@ -269,8 +267,8 @@ def extract_vertical_clip(
     video_path: str,
     clip: Clip,
     output_path: str,
-    target_width: int = 1080,
-    target_height: int = 1920
+    target_width: int = 720,
+    target_height: int = 1280
 ) -> str:
     info = get_video_info(video_path)
     orig_w, orig_h = info["width"], info["height"]
@@ -397,9 +395,9 @@ def process_video(video_path: str, job_id: str) -> dict:
     else:
         transcript = transcribe_audio(audio_path)
     print(f"[{job_id}] Transcription done. Segments: {len(transcript.get('segments', []))}")
-    audio_energy = analyze_audio_energy(video_path, info["duration"])
+    audio_energy = analyze_audio_energy(audio_path, info["duration"])
     face_scores = detect_face_presence(video_path, info["duration"], num_samples=len(audio_energy))
-    clip_duration = min(20.0, info["duration"] / 3)
+    clip_duration = min(15.0, info["duration"] / 3)
     clips = find_viral_moments(
         info["duration"], transcript, audio_energy, face_scores,
         num_clips=3, clip_duration=clip_duration
