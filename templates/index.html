@@ -147,6 +147,39 @@
         
         .upload-zone h3 { font-size: 1.5rem; font-weight: 600; margin-bottom: 8px; }
         .upload-zone p { color: var(--color-muted-foreground); font-size: 0.95rem; }
+        
+        .style-selector-container {
+            margin-top: 24px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .style-selector-container label {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--color-foreground);
+        }
+        
+        .style-selector {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--color-border);
+            color: var(--color-foreground);
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+        }
+        
+        .style-selector:focus {
+            border-color: var(--color-primary);
+        }
 
         /* Progress Terminal */
         .processing { display: none; padding: 40px 20px; max-width: 800px; margin: 0 auto; }
@@ -454,12 +487,21 @@
         </header>
 
         <div class="upload-zone" id="uploadZone">
-            <input type="file" id="fileInput" accept=".mp4,.mov,.mkv,video/mp4,video/quicktime,video/x-matroska">
+            <input type="file" id="fileInput" accept=".mp4,.mov,.mkv,video/mp4,video/quicktime,video/x-matroska" onchange="if(this.files[0]) handleFile(this.files[0])">
             <div class="upload-icon-wrap">
                 <i data-lucide="upload-cloud" stroke-width="1.5" width="36" height="36"></i>
             </div>
             <h3>Drop your video here</h3>
             <p>MP4, MOV, MKV up to 500MB</p>
+        </div>
+        
+        <div class="style-selector-container">
+            <label for="captionStyle">Caption Style & Vibe</label>
+            <select id="captionStyle" class="style-selector">
+                <option value="minimalist">Minimalist Clean (White + Dark Badge)</option>
+                <option value="mrbeast">MrBeast Dynamic (Bold Yellow + Outline)</option>
+                <option value="neon">Neon Cyberpunk (Cyan + Magenta Glow)</option>
+            </select>
         </div>
 
         <div class="processing" id="processing">
@@ -572,6 +614,9 @@
             uploadZone.style.display = 'none';
             document.querySelector('.features').style.display = 'none'; 
             
+            const styleContainer = document.querySelector('.style-selector-container');
+            if (styleContainer) styleContainer.style.display = 'none';
+            
             document.getElementById('progressFill').style.width = '0%';
             document.getElementById('statusLog').textContent = '> Uploading to server...';
             document.querySelectorAll('.check-item').forEach(el => el.className = 'check-item pending');
@@ -580,6 +625,12 @@
             
             const formData = new FormData();
             formData.append('video', file);
+            
+            const styleSelector = document.getElementById('captionStyle');
+            if (styleSelector) {
+                formData.append('caption_style', styleSelector.value);
+            }
+            
             fetch('/upload', { method: 'POST', body: formData })
                 .then(async r => {
                     if (!r.ok) {

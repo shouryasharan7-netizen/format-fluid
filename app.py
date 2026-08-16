@@ -29,6 +29,8 @@ def upload():
     upload_path = UPLOAD_DIR / f"{job_id}{ext}"
     file.save(str(upload_path))
     
+    caption_style = request.form.get("caption_style", "minimalist")
+    
     JOB_STATUSES[job_id] = {
         "stage": 1, 
         "status": "Initializing...", 
@@ -37,14 +39,14 @@ def upload():
         "error": None
     }
     
-    def run_job(path, jid):
+    def run_job(path, jid, style):
         def progress_cb(stage, status, pct):
             JOB_STATUSES[jid]["stage"] = stage
             JOB_STATUSES[jid]["status"] = status
             JOB_STATUSES[jid]["progress"] = pct
             
         try:
-            result = process_video(path, jid, progress_cb=progress_cb)
+            result = process_video(path, jid, progress_cb=progress_cb, caption_style=style)
             JOB_STATUSES[jid]["result"] = result
             JOB_STATUSES[jid]["progress"] = 100
         except Exception as e:
@@ -52,7 +54,7 @@ def upload():
             traceback.print_exc()
             JOB_STATUSES[jid]["error"] = repr(e)
             
-    threading.Thread(target=run_job, args=(str(upload_path), job_id)).start()
+    threading.Thread(target=run_job, args=(str(upload_path), job_id, caption_style)).start()
     
     return jsonify({"job_id": job_id})
 

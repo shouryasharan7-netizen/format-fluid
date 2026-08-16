@@ -311,7 +311,7 @@ def extract_vertical_clip(
     return output_path
 
 
-def burn_captions(video_path: str, output_path: str, words: List[dict]) -> str:
+def burn_captions(video_path: str, output_path: str, words: List[dict], caption_style: str = "minimalist") -> str:
     if not words:
         shutil.copy(video_path, output_path)
         return output_path
@@ -345,12 +345,17 @@ def burn_captions(video_path: str, output_path: str, words: List[dict]) -> str:
                         .replace(",", "\\,")
         if not safe_text.strip():
             continue
+        if caption_style == "mrbeast":
+            style_params = f"fontcolor=yellow:fontsize={font_size + 20}:borderw=4:bordercolor=black:shadowx=3:shadowy=3:shadowcolor=black@0.7:x=(w-text_w)/2:y={y_pos - 40}"
+        elif caption_style == "neon":
+            style_params = f"fontcolor=cyan:fontsize={font_size + 10}:shadowx=2:shadowy=2:shadowcolor=magenta@0.8:borderw=2:bordercolor=magenta:x=(w-text_w)/2:y={y_pos}"
+        else:
+            style_params = f"fontcolor=white:fontsize={font_size}:box=1:boxcolor=black@0.6:boxborderw=10:x=(w-text_w)/2:y={y_pos}"
+            
         dt = (
             f"drawtext=fontfile={FONT_PATH}:"
             f"text='{safe_text}':"
-            f"fontcolor=white:fontsize={font_size}:"
-            f"x=(w-text_w)/2:y={y_pos}:"
-            f"box=1:boxcolor=black@0.6:boxborderw=10:"
+            f"{style_params}:"
             f"enable='between(t\\,{start}\\,{end})'"
         )
         drawtexts.append(dt)
@@ -387,7 +392,7 @@ def generate_platform_copy(clip_text: str) -> dict:
     }
 
 
-def process_video(video_path: str, job_id: str, progress_cb=None) -> dict:
+def process_video(video_path: str, job_id: str, progress_cb=None, caption_style="minimalist") -> dict:
     def update_progress(stage, status, pct):
         if progress_cb:
             progress_cb(stage, status, pct)
@@ -440,7 +445,7 @@ def process_video(video_path: str, job_id: str, progress_cb=None) -> dict:
                             
         update_progress(4, f"Burning word-level synced captions (Clip {i+1}/{len(clips)})...", int(base_pct + 5))
         final_path = str(job_output / f"clip_{i}.mp4")
-        burn_captions(raw_path, final_path, clip_words)
+        burn_captions(raw_path, final_path, clip_words, caption_style=caption_style)
         
         update_progress(5, f"Generating platform-specific copy (Clip {i+1}/{len(clips)})...", int(base_pct + 10))
         copy = generate_platform_copy(clip.text)
