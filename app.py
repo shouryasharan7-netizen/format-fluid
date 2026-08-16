@@ -8,8 +8,36 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
 import threading
+import json
 
 JOB_STATUSES = {}
+
+def update_job_status(jid, stage, status, pct, result=None, error=None):
+    data = {
+        "stage": stage,
+        "status": status,
+        "progress": pct,
+        "result": result,
+        "error": error
+    }
+    JOB_STATUSES[jid] = data
+    try:
+        with open(OUTPUT_DIR / f"status_{jid}.json", "w") as f:
+            json.dump(data, f)
+    except Exception:
+        pass
+
+def get_job_status(jid):
+    if jid in JOB_STATUSES:
+        return JOB_STATUSES[jid]
+    status_file = OUTPUT_DIR / f"status_{jid}.json"
+    if status_file.exists():
+        try:
+            with open(status_file, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return None
 
 @app.route("/")
 def index():
@@ -31,28 +59,19 @@ def upload():
     
     caption_style = request.form.get("caption_style", "minimalist")
     
-    JOB_STATUSES[job_id] = {
-        "stage": 1, 
-        "status": "Initializing...", 
-        "progress": 0,
-        "result": None,
-        "error": None
-    }
+    update_job_status(job_id, 1, "Initializing...", 0)
     
     def run_job(path, jid, style):
         def progress_cb(stage, status, pct):
-            JOB_STATUSES[jid]["stage"] = stage
-            JOB_STATUSES[jid]["status"] = status
-            JOB_STATUSES[jid]["progress"] = pct
+            update_job_status(jid, stage, status, pct)
             
         try:
             result = process_video(path, jid, progress_cb=progress_cb, caption_style=style)
-            JOB_STATUSES[jid]["result"] = result
-            JOB_STATUSES[jid]["progress"] = 100
+            update_job_status(jid, 5, "Done!", 100, result=result)
         except Exception as e:
             import traceback
             traceback.print_exc()
-            JOB_STATUSES[jid]["error"] = repr(e)
+            update_job_status(jid, 5, "Error", 100, error=repr(e))
             
     threading.Thread(target=run_job, args=(str(upload_path), job_id, caption_style)).start()
     
@@ -60,9 +79,10 @@ def upload():
 
 @app.route("/status/<job_id>")
 def status(job_id):
-    if job_id not in JOB_STATUSES:
-        return jsonify({"error": "Job not found"}), 404
-    return jsonify(JOB_STATUSES[job_id])
+    status_data = get_job_status(job_id)
+    if not status_data:
+        return jsonify({"error": "Job not found or Server restarted."}), 404
+    return jsonify(status_data)
 
 @app.route("/download/<job_id>/<filename>")
 def download(job_id, filename):

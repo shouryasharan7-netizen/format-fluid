@@ -30,6 +30,12 @@ def transcribe_audio(audio_path: str) -> dict:
     
     print(f"[FormatFluid] Transcribing {audio_path}...")
     result = _whisper_model.transcribe(audio_path, language="en", fp16=False)
+    
+    # Free memory to prevent Railway OOM kills
+    _whisper_model = None
+    import gc
+    gc.collect()
+    
     return result
 
 UPLOAD_DIR = Path("uploads")
