@@ -23,6 +23,15 @@ def get_whisper_model():
         print("[FormatFluid] Whisper loaded.")
     return _whisper_model
 
+def transcribe_audio(audio_path: str) -> dict:
+    global _whisper_model
+    if _whisper_model is None:
+        get_whisper_model()
+    
+    print(f"[FormatFluid] Transcribing {audio_path}...")
+    result = _whisper_model.transcribe(audio_path, language="en", fp16=False)
+    return result
+
 UPLOAD_DIR = Path("uploads")
 OUTPUT_DIR = Path("outputs")
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -115,20 +124,11 @@ def extract_audio(video_path: str, output_wav: str) -> str:
     cmd = [
         "ffmpeg", "-y", "-i", video_path,
         "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le",
+        "-threads", "1",
         output_wav
     ]
     subprocess.run(cmd, capture_output=True, text=True)
     return output_wav
-
-
-def transcribe_audio(audio_path: str) -> dict:
-    model = get_whisper_model()
-    result = model.transcribe(
-        audio_path, 
-        word_timestamps=True,
-        condition_on_previous_text=False
-    )
-    return result
 
 
 def analyze_audio_energy(audio_path: str, duration: float, num_segments: int = 100) -> np.ndarray:
@@ -212,13 +212,16 @@ def get_face_center(video_path: str, start_time: float, end_time: float) -> Tupl
 
 
 def find_viral_moments(
-    duration: float,
-    transcript: dict,
-    audio_energy: np.ndarray,
+    duration: float, 
+    transcript: dict, 
+    audio_energy: np.ndarray, 
     face_scores: np.ndarray,
     num_clips: int = 5,
     clip_duration: float = 15.0
 ) -> List[Clip]:
+    if duration <= 0 or len(audio_energy) == 0:
+        return []
+        
     num_segments = len(audio_energy)
     segment_duration = duration / num_segments
     audio_min, audio_max = audio_energy.min(), audio_energy.max()
@@ -273,36 +276,38 @@ def extract_vertical_clip(
     info = get_video_info(video_path)
     orig_w, orig_h = info["width"], info["height"]
     face_x, face_y = get_face_center(video_path, clip.start, clip.end)
-    crop_height = orig_h
-    crop_width = int(orig_h * (9 / 16))
-    if crop_width > orig_w:
-        crop_width = orig_w
-        crop_height = int(orig_w * (16 / 9))
+    crop_h = orig_h
+    crop_w = int(orig_h * (9 / 16))
+    if crop_w > orig_w:
+        crop_w = orig_w
+        crop_h = int(orig_w * (16 / 9))
     if face_x is not None:
-        crop_x = int(face_x - crop_width / 2)
-        crop_x = max(0, min(crop_x, orig_w - crop_width))
+        crop_x = int(face_x - crop_w / 2)
+        crop_x = max(0, min(crop_x, orig_w - crop_w))
     else:
-        crop_x = (orig_w - crop_width) // 2
-    crop_y = max(0, (orig_h - crop_height) // 2)
+        crop_x = (orig_w - crop_w) // 2
+    crop_y = max(0, (orig_h - crop_h) // 2)
     duration = clip.end - clip.start
     cmd = [
-        "ffmpeg", "-y",
-        "-ss", str(clip.start),
-        "-t", str(duration),
-        "-i", video_path,
-        "-vf", f"crop={crop_width}:{crop_height}:{crop_x}:{crop_y},scale={target_width}:{target_height}",
-        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
-        "-c:a", "aac", "-b:a", "128k",
-        "-movflags", "+faststart",
+        "ffmpeg", "-y", "-i", video_path,
+        "-ss", str(clip.start), "-t", str(clip.end - clip.start),
+        "-vf", f"crop={crop_w}:{crop_h}:{crop_x}:{crop_y},scale={target_width}:{target_height}",
+        "-c:a", "copy",
+        "-threads", "1",
         output_path
     ]
-    subprocess.run(cmd, capture_output=True, text=True)
-    if not os.path.exists(output_path):
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+    except subprocess.CalledProcessError:
+        print(f"[FormatFluid] Crop failed, falling back to basic extraction for clip {clip.start}s")
         cmd_fallback = [
-            "ffmpeg", "-y", "-ss", str(clip.start), "-t", str(duration),
-            "-i", video_path, "-c:v", "copy", "-c:a", "copy", output_path
+            "ffmpeg", "-y", "-i", video_path,
+            "-ss", str(clip.start), "-t", str(clip.end - clip.start),
+            "-c:v", "copy", "-c:a", "copy",
+            "-threads", "1",
+            output_path
         ]
-        subprocess.run(cmd_fallback, capture_output=True, text=True)
+        subprocess.run(cmd_fallback, check=True, capture_output=True, text=True)
     return output_path
 
 
@@ -358,6 +363,7 @@ def burn_captions(video_path: str, output_path: str, words: List[dict]) -> str:
         "-vf", vf,
         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
         "-c:a", "copy",
+        "-threads", "1",
         "-movflags", "+faststart",
         output_path
     ]
