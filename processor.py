@@ -387,20 +387,31 @@ def generate_platform_copy(clip_text: str) -> dict:
     }
 
 
-def process_video(video_path: str, job_id: str) -> dict:
+def process_video(video_path: str, job_id: str, progress_cb=None) -> dict:
+    def update_progress(stage, status, pct):
+        if progress_cb:
+            progress_cb(stage, status, pct)
+
+    update_progress(1, "Validating and decoding video file...", 5)
     print(f"[{job_id}] Starting processing for: {video_path}")
     job_output = OUTPUT_DIR / job_id
     job_output.mkdir(exist_ok=True)
     info = get_video_info(video_path)
     print(f"[{job_id}] Video: {info['width']}x{info['height']}, {info['duration']:.1f}s")
+    
+    update_progress(1, "Extracting audio track...", 15)
     audio_path = str(job_output / "audio.wav")
     extract_audio(video_path, audio_path)
+    
     if not os.path.exists(audio_path) or os.path.getsize(audio_path) < 100:
         print(f"[{job_id}] Audio extraction failed or no audio track.")
         transcript = {}
     else:
+        update_progress(2, "Transcribing speech for smart detection...", 30)
         transcript = transcribe_audio(audio_path)
+    
     print(f"[{job_id}] Transcription done. Segments: {len(transcript.get('segments', []))}")
+    update_progress(2, "Running AI smart-detection for speaker focus and high-energy windows...", 45)
     audio_energy = analyze_audio_energy(audio_path, info["duration"])
     face_scores = detect_face_presence(video_path, info["duration"], num_samples=len(audio_energy))
     clip_duration = min(15.0, info["duration"] / 3)
@@ -409,11 +420,16 @@ def process_video(video_path: str, job_id: str) -> dict:
         num_clips=3, clip_duration=clip_duration
     )
     print(f"[{job_id}] Found {len(clips)} clips")
+    
     results = []
     for i, clip in enumerate(clips):
+        base_pct = 50 + (i / len(clips)) * 40
         print(f"[{job_id}] Processing clip {i+1}/{len(clips)}: {clip.start:.1f}s - {clip.end:.1f}s")
+        
+        update_progress(3, f"Auto-reframing to 9:16 vertical crop (Clip {i+1}/{len(clips)})...", int(base_pct))
         raw_path = str(job_output / f"clip_{i}_raw.mp4")
         extract_vertical_clip(video_path, clip, raw_path)
+        
         clip_words = []
         if "segments" in transcript:
             for seg in transcript["segments"]:
@@ -421,8 +437,12 @@ def process_video(video_path: str, job_id: str) -> dict:
                     for word in seg["words"]:
                         if clip.start <= word["start"] <= clip.end:
                             clip_words.append(word)
+                            
+        update_progress(4, f"Burning word-level synced captions (Clip {i+1}/{len(clips)})...", int(base_pct + 5))
         final_path = str(job_output / f"clip_{i}.mp4")
         burn_captions(raw_path, final_path, clip_words)
+        
+        update_progress(5, f"Generating platform-specific copy (Clip {i+1}/{len(clips)})...", int(base_pct + 10))
         copy = generate_platform_copy(clip.text)
         results.append({
             "clip_index": i,

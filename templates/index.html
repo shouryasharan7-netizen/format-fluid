@@ -148,41 +148,76 @@
         .upload-zone h3 { font-size: 1.5rem; font-weight: 600; margin-bottom: 8px; }
         .upload-zone p { color: var(--color-muted-foreground); font-size: 0.95rem; }
 
-        /* Processing State */
-        .processing { display: none; text-align: center; padding: 80px 20px; }
-        .processing.active { display: block; }
+        /* Progress Terminal */
+        .processing { display: none; padding: 40px 20px; max-width: 800px; margin: 0 auto; }
+        .processing.active { display: block; animation: fadeUp 0.5s var(--ease-out) forwards; }
         
-        .loader {
+        .processing-title { font-size: 1.75rem; font-weight: 600; margin-bottom: 24px; text-align: center; }
+        
+        .progress-bar-container {
+            width: 100%;
+            height: 6px;
+            background: var(--color-muted);
+            border-radius: 4px;
+            margin-bottom: 32px;
+            overflow: hidden;
             position: relative;
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 32px;
         }
         
-        .loader::before, .loader::after {
-            content: '';
+        .progress-bar-fill {
             position: absolute;
-            border-radius: 50%;
-            border: 2px solid transparent;
-        }
-        .loader::before {
-            top: 0; left: 0; right: 0; bottom: 0;
-            border-top-color: var(--color-primary);
-            border-bottom-color: var(--color-primary);
-            animation: spin 2s linear infinite;
-        }
-        .loader::after {
-            top: 10px; left: 10px; right: 10px; bottom: 10px;
-            border-left-color: var(--color-accent);
-            border-right-color: var(--color-accent);
-            animation: spin-reverse 1.5s linear infinite;
+            top: 0; left: 0; height: 100%;
+            background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+            width: 0%;
+            transition: width 0.3s ease;
         }
         
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes spin-reverse { to { transform: rotate(-360deg); } }
+        .checklist {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--color-border);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: left;
+            margin-bottom: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
         
-        .processing h3 { font-size: 1.75rem; font-weight: 600; margin-bottom: 12px; }
-        .processing p { color: var(--color-muted-foreground); font-size: 1.1rem; }
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 1.05rem;
+            color: var(--color-muted-foreground);
+            transition: all 0.3s ease;
+        }
+        
+        .check-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+        .check-item .icon-pending { display: block; opacity: 0.5; }
+        .check-item .icon-active { display: none; color: var(--color-primary); }
+        .check-item .icon-done { display: none; color: #10B981; }
+        
+        .check-item.active { color: var(--color-foreground); font-weight: 500; }
+        .check-item.active .icon-pending { display: none; }
+        .check-item.active .icon-active { display: block; animation: spin 2s linear infinite; }
+        
+        .check-item.done { color: var(--color-foreground); }
+        .check-item.done .icon-pending { display: none; }
+        .check-item.done .icon-done { display: block; }
+        
+        .status-log {
+            font-family: monospace;
+            color: #60A5FA;
+            font-size: 0.95rem;
+            background: rgba(0,0,0,0.4);
+            padding: 12px 16px;
+            border-radius: 8px;
+            text-align: left;
+            border-left: 3px solid var(--color-primary);
+        }
+        
+        .text-red { color: #EF4444 !important; }
 
         /* Results Section */
         .results { display: none; margin-top: 24px; }
@@ -428,9 +463,44 @@
         </div>
 
         <div class="processing" id="processing">
-            <div class="loader"></div>
-            <h3>Analyzing footage...</h3>
-            <p>Applying smart cuts and generating captions (30-90s)</p>
+            <h3 class="processing-title">Processing Video...</h3>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+            
+            <div class="checklist">
+                <div class="check-item pending" id="stage-1">
+                    <i data-lucide="circle-dashed" class="icon-pending"></i>
+                    <i data-lucide="loader-2" class="icon-active"></i>
+                    <i data-lucide="check-circle-2" class="icon-done"></i>
+                    <span>Validating and decoding video file...</span>
+                </div>
+                <div class="check-item pending" id="stage-2">
+                    <i data-lucide="circle-dashed" class="icon-pending"></i>
+                    <i data-lucide="loader-2" class="icon-active"></i>
+                    <i data-lucide="check-circle-2" class="icon-done"></i>
+                    <span>Running AI smart-detection for speaker focus and high-energy windows...</span>
+                </div>
+                <div class="check-item pending" id="stage-3">
+                    <i data-lucide="circle-dashed" class="icon-pending"></i>
+                    <i data-lucide="loader-2" class="icon-active"></i>
+                    <i data-lucide="check-circle-2" class="icon-done"></i>
+                    <span>Auto-reframing to 9:16 vertical crop...</span>
+                </div>
+                <div class="check-item pending" id="stage-4">
+                    <i data-lucide="circle-dashed" class="icon-pending"></i>
+                    <i data-lucide="loader-2" class="icon-active"></i>
+                    <i data-lucide="check-circle-2" class="icon-done"></i>
+                    <span>Transcribing speech and burning word-level synced captions...</span>
+                </div>
+                <div class="check-item pending" id="stage-5">
+                    <i data-lucide="circle-dashed" class="icon-pending"></i>
+                    <i data-lucide="loader-2" class="icon-active"></i>
+                    <i data-lucide="check-circle-2" class="icon-done"></i>
+                    <span>Generating platform-specific copy...</span>
+                </div>
+            </div>
+            <p class="status-log" id="statusLog">> Initializing...</p>
         </div>
 
         <div class="results" id="results">
@@ -500,25 +570,95 @@
             
             // Immediate UI feedback
             uploadZone.style.display = 'none';
-            document.querySelector('.features').style.display = 'none'; // Hide features during processing to focus on loader
+            document.querySelector('.features').style.display = 'none'; 
+            
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('statusLog').textContent = '> Uploading to server...';
+            document.querySelectorAll('.check-item').forEach(el => el.className = 'check-item pending');
+            
             processing.classList.add('active');
             
             const formData = new FormData();
             formData.append('video', file);
             fetch('/upload', { method: 'POST', body: formData })
-                .then(r => r.json())
+                .then(async r => {
+                    if (!r.ok) {
+                        let msg = r.statusText;
+                        try {
+                            const errData = await r.json();
+                            msg = errData.error || errData.message || JSON.stringify(errData);
+                        } catch(e) {}
+                        throw new Error(`Server Error (${r.status}): ${msg}`);
+                    }
+                    return r.json();
+                })
                 .then(data => { 
                     if (data.error) throw new Error(data.error); 
-                    currentData = data; 
-                    showResults(data); 
+                    if (!data.job_id) throw new Error("Unexpected response from server: " + JSON.stringify(data));
+                    startPolling(data.job_id);
                 })
                 .catch(err => { 
-                    results.classList.remove('active');
-                    processing.classList.add('active');
-                    processing.querySelector('h3').textContent = 'Something went wrong'; 
-                    processing.querySelector('p').textContent = err.message; 
-                    processing.querySelector('.loader').style.display = 'none';
+                    showError(err.message);
                 });
+        }
+        
+        function startPolling(jobId) {
+            const pollInterval = setInterval(() => {
+                fetch(`/status/${jobId}`)
+                    .then(async r => {
+                        if (!r.ok) {
+                            let msg = r.statusText;
+                            try {
+                                const errData = await r.json();
+                                msg = errData.error || errData.message || JSON.stringify(errData);
+                            } catch(e) {}
+                            throw new Error(`Server Error (${r.status}): ${msg}`);
+                        }
+                        return r.json();
+                    })
+                    .then(status => {
+                        if (status.error) throw new Error(status.error);
+                        
+                        updateChecklist(status.stage, status.progress, status.status);
+                        
+                        if (status.result) {
+                            clearInterval(pollInterval);
+                            currentData = status.result;
+                            showResults(status.result);
+                        }
+                    })
+                    .catch(err => {
+                        clearInterval(pollInterval);
+                        showError(err.message);
+                    });
+            }, 1000);
+        }
+        
+        function updateChecklist(currentStage, pct, logText) {
+            document.getElementById('progressFill').style.width = `${pct}%`;
+            document.getElementById('statusLog').textContent = `> ${logText}`;
+            
+            for(let i = 1; i <= 5; i++) {
+                const el = document.getElementById(`stage-${i}`);
+                if (!el) continue;
+                
+                if (i < currentStage) {
+                    el.className = 'check-item done';
+                } else if (i === currentStage) {
+                    el.className = 'check-item active';
+                } else {
+                    el.className = 'check-item pending';
+                }
+            }
+        }
+        
+        function showError(msg) {
+            results.classList.remove('active');
+            processing.classList.add('active');
+            processing.innerHTML = `
+                <h3 class="processing-title text-red">Something went wrong</h3>
+                <p class="status-log text-red" style="border-left-color: #EF4444;">> Error: ${msg}</p>
+            `;
         }
 
         function showResults(data) {
