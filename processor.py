@@ -155,7 +155,7 @@ def analyze_audio_energy(video_path: str, duration: float, num_segments: int = 1
     return np.array(energies)
 
 
-def detect_face_presence(video_path: str, duration: float, num_samples: int = 50) -> np.ndarray:
+def detect_face_presence(video_path: str, duration: float, num_samples: int = 100) -> np.ndarray:
     if not _cv2_available:
         return np.zeros(num_samples)
     import cv2
@@ -299,6 +299,12 @@ def extract_vertical_clip(
         output_path
     ]
     subprocess.run(cmd, capture_output=True, text=True)
+    if not os.path.exists(output_path):
+        cmd_fallback = [
+            "ffmpeg", "-y", "-ss", str(clip.start), "-t", str(duration),
+            "-i", video_path, "-c:v", "copy", "-c:a", "copy", output_path
+        ]
+        subprocess.run(cmd_fallback, capture_output=True, text=True)
     return output_path
 
 
@@ -359,7 +365,8 @@ def burn_captions(video_path: str, output_path: str, words: List[dict]) -> str:
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:
-        shutil.copy(video_path, output_path)
+        if os.path.exists(video_path):
+            shutil.copy(video_path, output_path)
     return output_path
 
 
@@ -384,10 +391,14 @@ def process_video(video_path: str, job_id: str) -> dict:
     print(f"[{job_id}] Video: {info['width']}x{info['height']}, {info['duration']:.1f}s")
     audio_path = str(job_output / "audio.wav")
     extract_audio(video_path, audio_path)
-    transcript = transcribe_audio(audio_path)
+    if not os.path.exists(audio_path) or os.path.getsize(audio_path) < 100:
+        print(f"[{job_id}] Audio extraction failed or no audio track.")
+        transcript = {}
+    else:
+        transcript = transcribe_audio(audio_path)
     print(f"[{job_id}] Transcription done. Segments: {len(transcript.get('segments', []))}")
     audio_energy = analyze_audio_energy(video_path, info["duration"])
-    face_scores = detect_face_presence(video_path, info["duration"])
+    face_scores = detect_face_presence(video_path, info["duration"], num_samples=len(audio_energy))
     clip_duration = min(20.0, info["duration"] / 3)
     clips = find_viral_moments(
         info["duration"], transcript, audio_energy, face_scores,

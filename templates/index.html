@@ -495,7 +495,8 @@
         });
 
         function handleFile(file) {
-            if (!file.type.startsWith('video/')) { alert('Please upload a video file'); return; }
+            const isVideo = file.type.startsWith('video/') || file.name.match(/\.(mp4|mov|mkv)$/i);
+            if (!isVideo) { alert('Please upload a valid video file (.mp4, .mov, .mkv)'); return; }
             
             // Immediate UI feedback
             uploadZone.style.display = 'none';
