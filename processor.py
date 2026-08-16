@@ -129,7 +129,7 @@ def get_video_info(video_path: str) -> dict:
 
 def extract_audio(video_path: str, output_wav: str) -> str:
     cmd = [
-        "ffmpeg", "-y", "-i", video_path,
+        "ffmpeg", "-y", "-nostdin", "-i", video_path,
         "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le",
         "-threads", "1",
         output_wav
@@ -216,7 +216,7 @@ def get_face_center(video_path: str, start_time: float, end_time: float) -> Tupl
     for t in times_to_check:
         tmp_path = f"{video_path}_tmp_{t}.jpg"
         cmd = [
-            "ffmpeg", "-y", "-ss", str(t), "-i", video_path, 
+            "ffmpeg", "-y", "-nostdin", "-ss", str(t), "-i", video_path, 
             "-vframes", "1", "-q:v", "2", tmp_path
         ]
         try:
@@ -320,7 +320,7 @@ def extract_vertical_clip(
     crop_y = max(0, (orig_h - crop_h) // 2)
     duration = clip.end - clip.start
     cmd = [
-        "ffmpeg", "-y", 
+        "ffmpeg", "-y", "-nostdin", 
         "-ss", str(clip.start),
         "-i", video_path,
         "-t", str(clip.end - clip.start),
@@ -334,7 +334,7 @@ def extract_vertical_clip(
     if result.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:
         print(f"[FormatFluid] Crop failed, falling back to basic extraction for clip {clip.start}s")
         cmd_fallback = [
-            "ffmpeg", "-y", 
+            "ffmpeg", "-y", "-nostdin", 
             "-ss", str(clip.start),
             "-i", video_path,
             "-t", str(clip.end - clip.start),
@@ -402,7 +402,7 @@ def burn_captions(video_path: str, output_path: str, words: List[dict], caption_
         return output_path
     vf = ",".join(drawtexts)
     cmd = [
-        "ffmpeg", "-y", "-i", video_path,
+        "ffmpeg", "-y", "-nostdin", "-i", video_path,
         "-vf", vf,
         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
         "-c:a", "copy",
