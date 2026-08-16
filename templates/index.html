@@ -513,6 +513,8 @@
                     showResults(data); 
                 })
                 .catch(err => { 
+                    results.classList.remove('active');
+                    processing.classList.add('active');
                     processing.querySelector('h3').textContent = 'Something went wrong'; 
                     processing.querySelector('p').textContent = err.message; 
                     processing.querySelector('.loader').style.display = 'none';
