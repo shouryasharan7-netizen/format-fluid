@@ -484,7 +484,7 @@
         let currentData = null;
 
         uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+        uploadZone.addEventListener('dragleave', () => { uploadZone.classList.remove('dragover'); });
         uploadZone.addEventListener('drop', (e) => { 
             e.preventDefault(); 
             uploadZone.classList.remove('dragover'); 

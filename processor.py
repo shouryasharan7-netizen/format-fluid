@@ -32,6 +32,7 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 def find_font():
     candidates = [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/System/Library/Fonts/Helvetica.ttc",
         "/Library/Fonts/Arial.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",

@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libsm6 \
     libxext6 \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements file into the container
@@ -28,4 +29,4 @@ RUN mkdir -p uploads outputs && chmod 777 uploads outputs
 EXPOSE 5000
 
 # Run gunicorn when the container launches
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--timeout", "120", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--timeout", "300", "app:app"]
